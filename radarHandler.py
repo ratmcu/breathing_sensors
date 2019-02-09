@@ -243,7 +243,13 @@ class CollectionThreadX4(threading.Thread):
                 radarFrame = self.read_frame()
                 # print len(radarFrame)
                 self.radarDataLock.acquire()
-                self.radarDataQ.put([int((currentTime - startTime) * 1000)] + list(radarFrame))
+                # self.radarDataQ.put([int((currentTime - startTime) * 1000)] + list(radarFrame))
+                # radarFrame = str(radarFrame).replace('(','').replace(')','')
+                # rdDataRow = [currentTime] + list(radarFrame)
+                rdDataRowstr = []
+                for i in range(len(radarFrame)):
+                    rdDataRowstr.append(str(radarFrame[i]).replace('(','').replace(')',''))
+                self.radarDataQ.put([currentTime] + list(rdDataRowstr))
                 self.radarDataLock.release()
 
             self.radarObject.x4driver_set_fps(0) # stop the radar

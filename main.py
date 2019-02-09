@@ -19,7 +19,7 @@ try:
 except:
     print('ROS not found')
     ROS_AVAILABLE = False
-# ROS_AVAILABLE = True # let's keep it so, until we fix the main thread issue for ros node init
+ROS_AVAILABLE = False # let's keep it so, until we fix the main thread issue for ros node init
 
 import time
 import collections
@@ -248,8 +248,8 @@ class MainClass(object):
         self.procInputQ = multiprocessing.Queue()
         self.procOutputQ = multiprocessing.Queue()
         self.procStopEvent = multiprocessing.Event()
-        self.processBRProc = processBR(self.procInputQ,self.procOutputQ,
-                                       self.procStopEvent,self.radarSettings)
+        # self.processBRProc = processBR(self.procInputQ,self.procOutputQ,
+        #                                self.procStopEvent,self.radarSettings)
         self.referenceSignal = []
         self.referenceSignalTime = []
 
@@ -520,241 +520,249 @@ class MainClass(object):
         # self.radarResumeEvent.set()
         # self.radarPauseEvent.clear()
         self.radarThread.start() # start data collection thread
-        self.processBRProc.start() # start breath rate processing process
+        self.procStopEvent.clear()
+        # self.processBRProc.start() # start breath rate processing process
         # if self.SIMULATE == False:
         #This sleep is needed for the non real time mode as well
         # if self.USE_CLASSIFIER:
         time.sleep(15) #Sleep for radar to initialize
         firstDataProcessed = False
-        try:
-            # if ROS_AVAILABLE:
-            #     rospy.init_node('realtimeBreathing_{0}'.format(self.radarNumber))
-            #rospy.sleep(WINDOW_LENGTH) # sleep till first set of useful data is collected
-            elapsedTime = 0
-            while True:
-                # if self.mainPauseEvent.is_set():
-                #     print('radar thread {0} is paused'.format(self.radarNumber))
-                #     self.mainResumeEvent.wait()
-                #     print('radar thread {0} is resumed'.format(self.radarNumber))
-                #     self.mainResumeEvent.clear()
-                #     while not self.radarDataQ.empty():
-                #         self.radarDataQ.get()
-                #     self.radarResumeEvent.set()
-                sleepTime = PROCESSING_INTERVAL - elapsedTime
-                # print('Sleeping : %f seconds' % sleepTime)
-                if sleepTime>0:
-                    time.sleep(sleepTime)
-                startTime = time.time()
-                #''' acquire required data from the sensor thread'''
-                if not self.radarDataQ.empty():
-                    # print('Getting radar data...')
-                    # radarDataTemp = []
-                    self.radarDataLock.acquire()
-                    while not self.radarDataQ.empty():
-                        # radarDataTemp.append(radarDataQ.get())
-                        self.procInputDict['radarData'].append(self.radarDataQ.get())
-                    self.radarDataLock.release()
-                    self.radarDataDeck.extend(self.procInputDict['radarData']) #Needed for Matlab and saving the data
-                #'''end of the data acquisition'''
-                    self.previousEndTime = self.endTime
-                    if isinstance(self.radarDataDeck[-1][0], complex):
-                        self.endTime = self.radarDataDeck[-1][0].real  # last timestamp of radarData in milliseconds
+        # try:
+        # if ROS_AVAILABLE:
+        #     rospy.init_node('realtimeBreathing_{0}'.format(self.radarNumber))
+        #rospy.sleep(WINDOW_LENGTH) # sleep till first set of useful data is collected
+        elapsedTime = 0
+        while True:
+            # if self.mainPauseEvent.is_set():
+            #     print('radar thread {0} is paused'.format(self.radarNumber))
+            #     self.mainResumeEvent.wait()
+            #     print('radar thread {0} is resumed'.format(self.radarNumber))
+            #     self.mainResumeEvent.clear()
+            #     while not self.radarDataQ.empty():
+            #         self.radarDataQ.get()
+            # #     self.radarResumeEvent.set()
+            # sleepTime = PROCESSING_INTERVAL - elapsedTime
+            # # print('Sleeping : %f seconds' % sleepTime)
+            # if sleepTime>0:
+            #     time.sleep(sleepTime)
+            # startTime = time.time()
+
+            #''' acquire required data from the sensor thread'''
+            if not self.radarDataQ.empty():
+                # print('Getting radar data...')
+                # radarDataTemp = []
+                self.radarDataLock.acquire()
+                while not self.radarDataQ.empty():
+                    # radarDataTemp.append(radarDataQ.get())
+                    self.procInputDict['radarData'].append(self.radarDataQ.get())
+                self.radarDataLock.release()
+                self.radarDataDeck.extend(self.procInputDict['radarData']) #Needed for Matlab and saving the data
+            #'''end of the data acquisition'''
+                # self.previousEndTime = self.endTime
+                # if isinstance(self.radarDataDeck[-1][0], complex):
+                #     self.endTime = self.radarDataDeck[-1][0].real  # last timestamp of radarData in milliseconds
+                # else:
+                #     self.endTime = self.radarDataDeck[-1][0]
+                # startAt = self.endTime - WINDOW_LENGTH * 1000  # starting timestamp of radardata to extract window in milliseconds
+                # if self.OPEN_LABELS_FILE:
+                #     dframeRange = self.labelsForNN[(self.labelsForNN['Time']>=startAt) &
+                #                                         (self.labelsForNN['Time']<=self.endTime)]
+                #     self.dataClasses = np.array(dframeRange['Label'])
+                #     if self.dataClasses[0] == self.dataClasses[-1]:  # Check if class changed
+                #         self.dataClass = self.dataClasses[-1]
+                #     elif self.dataClasses[-1]==-20: #Train
+                #         self.dataClass = -20
+                #     else:
+                #         self.dataClass = -1
+                # # print('End time: ' + str(self.endTime))
+                # # print(bcolors.OKGREEN+"WallEndTime: " + str(self.startWallTime + (self.endTime/1000))+bcolors.ENDC)
+                # startIndex = 0
+                # for rdDataRow in self.radarDataDeck:
+                #     startIndex += 1
+                #     if isinstance(rdDataRow[0], complex):
+                #         if rdDataRow[0].real > startAt:
+                #             startIndex -= 1
+                #             break
+                #     else:
+                #         if rdDataRow[0] > startAt:
+                #             startIndex -= 1
+                #             break
+                # if isinstance(self.radarDataDeck[-1][0], complex):
+                #     self.windowStartTime = self.radarDataDeck[startIndex][0].real  # last timestamp of radarData in milliseconds
+                # else:
+                #     self.windowStartTime = self.radarDataDeck[startIndex][0]
+                #
+                # self.radarDataWindow = list(self.radarDataDeck)[startIndex:-1][:]
+                # if isinstance(self.radarDataDeck[-1][0], complex):
+                #     self.dspVars['fs'] = 1000.0 * len(self.radarDataWindow) / (
+                #     self.radarDataWindow[-1][0].real - self.radarDataWindow[0][0].real)
+                # else:
+                #     self.dspVars['fs'] = 1000.0 * len(self.radarDataWindow) / (
+                #     self.radarDataWindow[-1][0] - self.radarDataWindow[0][0])
+                # # MATLAB
+                # if MATLAB_AVAILABLE:
+                #     if firstDataProcessed:
+                #         self.fetchAndPublishMatlabWorkspaceVars()
+                #         if self.USE_CLASSIFIER:
+                #             try:
+                #                 self.publishPosture(self.classOut.result()[0])
+                #             except:
+                #                 print(bcolors.FAIL+'Posture not found'+bcolors.ENDC)
+                #     self.startMatlabProcessing()
+                #     firstDataProcessed = True
+                #
+
+                dataSaved = False
+                if self.SAVE_DATA:
+                    if isinstance(self.radarDataDeck[-1][0],complex):
+                        # if self.radarDataDeck[-1][0].real - self.radarDataDeck[0][0].real > self.FILE_LENGTH * 1000:
+                        if self.radarDataDeck[-1][0].real - self.radarDataDeck[0][0].real > self.FILE_LENGTH:
+                            self.saveData()
+                            self.procInputDict['radarData'] = []
+                            dataSaved = True
                     else:
-                        self.endTime = self.radarDataDeck[-1][0]
-                    startAt = self.endTime - WINDOW_LENGTH * 1000  # starting timestamp of radardata to extract window in milliseconds
-                    if self.OPEN_LABELS_FILE:
-                        dframeRange = self.labelsForNN[(self.labelsForNN['Time']>=startAt) &
-                                                            (self.labelsForNN['Time']<=self.endTime)]
-                        self.dataClasses = np.array(dframeRange['Label'])
-                        if self.dataClasses[0] == self.dataClasses[-1]:  # Check if class changed
-                            self.dataClass = self.dataClasses[-1]
-                        elif self.dataClasses[-1]==-20: #Train
-                            self.dataClass = -20
-                        else:
-                            self.dataClass = -1
-                    print('End time: ' + str(self.endTime))
-                    print(bcolors.OKGREEN+"WallEndTime: " + str(self.startWallTime + (self.endTime/1000))+bcolors.ENDC)
-                    startIndex = 0
-                    for rdDataRow in self.radarDataDeck:
-                        startIndex += 1
-                        if isinstance(rdDataRow[0], complex):
-                            if rdDataRow[0].real > startAt:
-                                startIndex -= 1
-                                break
-                        else:
-                            if rdDataRow[0] > startAt:
-                                startIndex -= 1
-                                break
-                    if isinstance(self.radarDataDeck[-1][0], complex):
-                        self.windowStartTime = self.radarDataDeck[startIndex][0].real  # last timestamp of radarData in milliseconds
-                    else:
-                        self.windowStartTime = self.radarDataDeck[startIndex][0]
-
-                    self.radarDataWindow = list(self.radarDataDeck)[startIndex:-1][:]
-                    if isinstance(self.radarDataDeck[-1][0], complex):
-                        self.dspVars['fs'] = 1000.0 * len(self.radarDataWindow) / (
-                        self.radarDataWindow[-1][0].real - self.radarDataWindow[0][0].real)
-                    else:
-                        self.dspVars['fs'] = 1000.0 * len(self.radarDataWindow) / (
-                        self.radarDataWindow[-1][0] - self.radarDataWindow[0][0])
-                    # MATLAB
-                    if MATLAB_AVAILABLE:
-                        if firstDataProcessed:
-                            self.fetchAndPublishMatlabWorkspaceVars()
-                            if self.USE_CLASSIFIER:
-                                try:
-                                    self.publishPosture(self.classOut.result()[0])
-                                except:
-                                    print(bcolors.FAIL+'Posture not found'+bcolors.ENDC)
-                        self.startMatlabProcessing()
-                        firstDataProcessed = True
-
-
-                    dataSaved = False
-                    if self.SAVE_DATA:
-                        if isinstance(self.radarDataDeck[-1][0],complex):
-                            if self.radarDataDeck[-1][0].real - self.radarDataDeck[0][0].real > self.FILE_LENGTH * 1000:
-                                self.saveData()
-                                # self.procInputDict['radarData'] = []
-                                dataSaved = True
-                        else:
-                            if self.radarDataDeck[-1][0] - self.radarDataDeck[0][0] > self.FILE_LENGTH * 1000:
-                                self.saveData()
-                                # self.procInputDict['radarData'] = []
-                                dataSaved = True
-                    if dataSaved :
-                        # self.radarPauseEvent.set()
-                        # self.mainPauseEvent.set()
-                        pass
-
-                    self.previousReferenceRate = self.referenceRate
-                    self.referenceRate = self.getReferenceRate(self.windowStartTime, self.endTime)
-                    self.procInputDict['RefSignal'] = self.referenceSignal
-                    self.procInputDict['RefSignalTime'] = self.referenceSignalTime
-                    self.procInputDict['RefRate'] = self.referenceRate
-                    self.procInputQ.put(self.procInputDict)  # send data into processing
-                    self.procInputDict = {}
-                    self.procInputDict['radarData'] = []
-                    processedOutputReceived = False
-                    while not self.procOutputQ.empty(): # get processed data
-                        outputItem = self.procOutputQ.get()
-                        processedOutputReceived = True
-                    if processedOutputReceived:
-                        self.currentRangeM = outputItem[0]*self.RADAR_RESOLUTION
-                        self.currentInstRangeM = outputItem[7]*self.RADAR_RESOLUTION
-                        self.dspVars['pythonRangeBin'] = outputItem[0]
-                        if ROS_AVAILABLE:
-                            self.publishRange(self.currentRangeM)
-                        if self.USE_CLASSIFIER:
-                            try:
-                                self.publishActivity(outputItem[3], self.classOut.result()[1])
-                            except:
-                                print(bcolors.FAIL+'Activity not found'+bcolors.ENDC)
-                        if len(outputItem[2])>0:
-                            self.EMDBreathRate = outputItem[2][-1] #get latest rate
-                            # self.EMDBreathRate = np.median(outputItem[2]) #get median rate
-                            self.breathSignal = outputItem[1] #Breathing signal raw
-                            # print('EMD Median Rate: %f'%self.EMDBreathRate)
-                            # print('EMD current rate: %f'%outputItem[2][-1])
-                            if ROS_AVAILABLE:
-                                self.breathingRateGlobal = self.EMDBreathRate
-                                self.pubBreathRateEMD.publish(self.EMDBreathRate)
-                                if self.ALGORITHM_TO_USE=='EMD_MEDIAN':
-                                    self.pubBreathRateCombined.publish(self.EMDBreathRate)
-                                elif self.ALGORITHM_TO_USE == 'EMD':
-                                    self.pubBreathRateCombined.publish(outputItem[2][-1])
-                            self.breathRatesAllAlgos['EMD'] = outputItem[2][-1]
-                            # self.breathRatesAllAlgos['EMD_Median'] = self.EMDBreathRate
-                            if 'EMD' in self.breathRateHistoryAllAlgos.keys():
-                                self.breathRateHistoryAllAlgos['EMD'].append(outputItem[2][-1])
-                                # self.breathRateHistoryAllAlgos['EMD_Median'].append(self.EMDBreathRate)
-                            else:
-                                self.breathRateHistoryAllAlgos['EMD'] = collections.deque(
-                                    maxlen=self.NUM_BREATHRATEHISTORY)
-                                self.breathRateHistoryAllAlgos['EMD'].append(outputItem[2][-1])
-                                # self.breathRateHistoryAllAlgos['EMD_Median'] = collections.deque(
-                                #     maxlen=self.NUM_BREATHRATEHISTORY)
-                                # self.breathRateHistoryAllAlgos['EMD_Median'].append(self.EMDBreathRate)
-                        self.personState = outputItem[3]['event_type']
-                        self.rangeCSVTable = self.rangeCSVTable.append({'Range(m)': self.currentRangeM,
-                                                                        'InstantaneousRange(m)': self.currentInstRangeM,
-                                                                        'Time(ms)': self.endTime,
-                                                                        'Activity': self.personState},
-                                                                        ignore_index=True)
-                        self.breathRatesAllAlgos['FFTMaxFreq'] = outputItem[4]
-                        if 'FFTMaxFreq' in self.breathRateHistoryAllAlgos.keys():
-                            self.breathRateHistoryAllAlgos['FFTMaxFreq'].append(outputItem[4])
-                        else:
-                            self.breathRateHistoryAllAlgos['FFTMaxFreq'] = collections.deque(maxlen=self.NUM_BREATHRATEHISTORY)
-                            self.breathRateHistoryAllAlgos['FFTMaxFreq'].append(outputItem[4])
-
-                        # self.breathRatesAllAlgos['WTBRate'] = outputItem[5]
-                        # if 'WTBRate' in self.breathRateHistoryAllAlgos.keys():
-                        #     self.breathRateHistoryAllAlgos['WTBRate'].append(outputItem[5])
-                        # else:
-                        #     self.breathRateHistoryAllAlgos['WTBRate'] = collections.deque(
-                        #         maxlen=self.NUM_BREATHRATEHISTORY)
-                        #     self.breathRateHistoryAllAlgos['WTBRate'].append(outputItem[5])
-
-                        self.breathRatesAllAlgos['MinkBRate'] = outputItem[6]
-                        if 'MinkBRate' in self.breathRateHistoryAllAlgos.keys():
-                            self.breathRateHistoryAllAlgos['MinkBRate'].append(outputItem[6])
-                        else:
-                            self.breathRateHistoryAllAlgos['MinkBRate'] = collections.deque(
-                                maxlen=self.NUM_BREATHRATEHISTORY)
-                            self.breathRateHistoryAllAlgos['MinkBRate'].append(outputItem[6])
-
-                        if outputItem[3]['event_type']=='fast_movement':
-                            print ('Fast movement detectedby radar {0}'.format(self.radarNumber))
-
-                        # ROS SEND
-                        if ROS_AVAILABLE:
-                            self.pubRD_Range.publish(self.currentRangeM)
-                            breathingSignal = Float32MultiArray()
-                            # breathingSignal.data = self.matlabVars['filteredPersonBinSignal']
-                            breathingSignal.data = list(self.breathSignal)
-                            self.pubBreathSig.publish(breathingSignal)
-                            self.activityPublisher.publish(self.personState)
-                        # END ROS SEND
-
-                        # CLOUD SEND
-                        dictData = {}
-                        dictData["deviceId"] = 1
-                        dictData["time"] = time.time()
-                        dictData["BreathingSignal"] = list(np.abs(self.breathSignal))
-                        dictData["BreathingRate"] = self.EMDBreathRate
-                        dictData["Range"] = self.currentRangeM
-                        dictData["Activity"] = self.personState
-                        self.QDataDict.put(dictData)  #Uncomment to send data to cloud
-                        # CLOUD SEND END
-                    if self.personState !=  'Stationary':
-                        print(self.personState)
-                        print(bcolors.ERROR+'Person is moving, Breath signal not detectable by radar {0}'.format(self.radarNumber)+bcolors.ENDC)
-                    else:
-                        self.findBreathRateCombined()
-                        if self.previousReferenceRate is not 0:
-                            self.addToResultsTable(self.previousReferenceRate)
-                        if self.OPEN_BBELT_FILE == False:
-                            self.addToResultsTable(0)
-                    if self.NON_REALTIME_MODE:
-                        elapsedTime = time.time() - startTime
-                        self.getUserInput()
-                elif self.isMatlabBreathingDone() and self.isClassifierDone() and radarDataQ.empty():
-                    print('Processing finished, waiting for new data... ')
-                    if not self.resultsDataSaved:
-                        self.saveResults()
-                        self.resultsDataSaved = True
-                        self.safeExit()
-                        return
-                    if self.NON_REALTIME_MODE:
-                        elapsedTime = time.time() - startTime
-                        self.getUserInput()
-                if not self.NON_REALTIME_MODE:
-                    elapsedTime = time.time() - startTime
-                ## end of main while True loop
-            self.safeExit()
-        except KeyboardInterrupt:
-            self.safeExit()
+                        # if self.radarDataDeck[-1][0] - self.radarDataDeck[0][0] > self.FILE_LENGTH * 1000:
+                        if self.radarDataDeck[-1][0] - self.radarDataDeck[0][0] > self.FILE_LENGTH:
+                            self.saveData()
+                            self.procInputDict['radarData'] = []
+                            dataSaved = True
+                if dataSaved :
+                    # self.radarPauseEvent.set()
+                    # self.mainPauseEvent.set()
+                    pass
+            #
+            #     self.previousReferenceRate = self.referenceRate
+            #     self.referenceRate = self.getReferenceRate(self.windowStartTime, self.endTime)
+            #     self.procInputDict['RefSignal'] = self.referenceSignal
+            #     self.procInputDict['RefSignalTime'] = self.referenceSignalTime
+            #     self.procInputDict['RefRate'] = self.referenceRate
+            #     self.procInputQ.put(self.procInputDict)  # send data into processing
+            #     self.procInputDict = {}
+            #     self.procInputDict['radarData'] = []
+            #     processedOutputReceived = False
+            #     while self.procOutputQ.empty():
+            #         pass
+            #     while not self.procOutputQ.empty(): # get processed data
+            #         outputItem = self.procOutputQ.get()
+            #         processedOutputReceived = True
+            #     if processedOutputReceived:
+            #         print ('processedOutputReceived {0}'.format(self.radarNumber))
+            #         self.currentRangeM = outputItem[0]*self.RADAR_RESOLUTION
+            #         self.currentInstRangeM = outputItem[7]*self.RADAR_RESOLUTION
+            #         self.dspVars['pythonRangeBin'] = outputItem[0]
+            #         if ROS_AVAILABLE:
+            #             self.publishRange(self.currentRangeM)
+            #         if self.USE_CLASSIFIER:
+            #             try:
+            #                 self.publishActivity(outputItem[3], self.classOut.result()[1])
+            #             except:
+            #                 print(bcolors.FAIL+'Activity not found'+bcolors.ENDC)
+            #         if len(outputItem[2])>0:
+            #             self.EMDBreathRate = outputItem[2][-1] #get latest rate
+            #             # self.EMDBreathRate = np.median(outputItem[2]) #get median rate
+            #             self.breathSignal = outputItem[1] #Breathing signal raw
+            #             # print('EMD Median Rate: %f'%self.EMDBreathRate)
+            #             # print('EMD current rate: %f'%outputItem[2][-1])
+            #             if ROS_AVAILABLE:
+            #                 self.breathingRateGlobal = self.EMDBreathRate
+            #                 self.pubBreathRateEMD.publish(self.EMDBreathRate)
+            #                 if self.ALGORITHM_TO_USE=='EMD_MEDIAN':
+            #                     self.pubBreathRateCombined.publish(self.EMDBreathRate)
+            #                 elif self.ALGORITHM_TO_USE == 'EMD':
+            #                     self.pubBreathRateCombined.publish(outputItem[2][-1])
+            #             self.breathRatesAllAlgos['EMD'] = outputItem[2][-1]
+            #             # self.breathRatesAllAlgos['EMD_Median'] = self.EMDBreathRate
+            #             if 'EMD' in self.breathRateHistoryAllAlgos.keys():
+            #                 self.breathRateHistoryAllAlgos['EMD'].append(outputItem[2][-1])
+            #                 # self.breathRateHistoryAllAlgos['EMD_Median'].append(self.EMDBreathRate)
+            #             else:
+            #                 self.breathRateHistoryAllAlgos['EMD'] = collections.deque(
+            #                     maxlen=self.NUM_BREATHRATEHISTORY)
+            #                 self.breathRateHistoryAllAlgos['EMD'].append(outputItem[2][-1])
+            #                 # self.breathRateHistoryAllAlgos['EMD_Median'] = collections.deque(
+            #                 #     maxlen=self.NUM_BREATHRATEHISTORY)
+            #                 # self.breathRateHistoryAllAlgos['EMD_Median'].append(self.EMDBreathRate)
+            #         self.personState = outputItem[3]['event_type']
+            #         self.rangeCSVTable = self.rangeCSVTable.append({'Range(m)': self.currentRangeM,
+            #                                                         'InstantaneousRange(m)': self.currentInstRangeM,
+            #                                                         'Time(ms)': self.endTime,
+            #                                                         'Activity': self.personState},
+            #                                                         ignore_index=True)
+            #         self.breathRatesAllAlgos['FFTMaxFreq'] = outputItem[4]
+            #         if 'FFTMaxFreq' in self.breathRateHistoryAllAlgos.keys():
+            #             self.breathRateHistoryAllAlgos['FFTMaxFreq'].append(outputItem[4])
+            #         else:
+            #             self.breathRateHistoryAllAlgos['FFTMaxFreq'] = collections.deque(maxlen=self.NUM_BREATHRATEHISTORY)
+            #             self.breathRateHistoryAllAlgos['FFTMaxFreq'].append(outputItem[4])
+            #
+            #         # self.breathRatesAllAlgos['WTBRate'] = outputItem[5]
+            #         # if 'WTBRate' in self.breathRateHistoryAllAlgos.keys():
+            #         #     self.breathRateHistoryAllAlgos['WTBRate'].append(outputItem[5])
+            #         # else:
+            #         #     self.breathRateHistoryAllAlgos['WTBRate'] = collections.deque(
+            #         #         maxlen=self.NUM_BREATHRATEHISTORY)
+            #         #     self.breathRateHistoryAllAlgos['WTBRate'].append(outputItem[5])
+            #
+            #         self.breathRatesAllAlgos['MinkBRate'] = outputItem[6]
+            #         if 'MinkBRate' in self.breathRateHistoryAllAlgos.keys():
+            #             self.breathRateHistoryAllAlgos['MinkBRate'].append(outputItem[6])
+            #         else:
+            #             self.breathRateHistoryAllAlgos['MinkBRate'] = collections.deque(
+            #                 maxlen=self.NUM_BREATHRATEHISTORY)
+            #             self.breathRateHistoryAllAlgos['MinkBRate'].append(outputItem[6])
+            #
+            #         if outputItem[3]['event_type']=='fast_movement':
+            #             # print ('Fast movement detectedby radar {0}'.format(self.radarNumber))
+            #             pass
+            #
+            #         # ROS SEND
+            #         if ROS_AVAILABLE:
+            #             self.pubRD_Range.publish(self.currentRangeM)
+            #             breathingSignal = Float32MultiArray()
+            #             # breathingSignal.data = self.matlabVars['filteredPersonBinSignal']
+            #             breathingSignal.data = list(self.breathSignal)
+            #             self.pubBreathSig.publish(breathingSignal)
+            #             self.activityPublisher.publish(self.personState)
+            #         # END ROS SEND
+            #
+            #         # CLOUD SEND
+            #         dictData = {}
+            #         dictData["deviceId"] = 1
+            #         dictData["time"] = time.time()
+            #         dictData["BreathingSignal"] = list(np.abs(self.breathSignal))
+            #         dictData["BreathingRate"] = self.EMDBreathRate
+            #         dictData["Range"] = self.currentRangeM
+            #         dictData["Activity"] = self.personState
+            #         self.QDataDict.put(dictData)  #Uncomment to send data to cloud
+            #         # CLOUD SEND END
+            #     if self.personState !=  'Stationary':
+            #         print(self.personState)
+            #         # print(bcolors.ERROR+'Person is moving, Breath signal not detectable by radar {0}'.format(self.radarNumber)+bcolors.ENDC)
+            #     else:
+            #         self.findBreathRateCombined()
+            #         if self.previousReferenceRate is not 0:
+            #             self.addToResultsTable(self.previousReferenceRate)
+            #         if self.OPEN_BBELT_FILE == False:
+            #             self.addToResultsTable(0)
+            #     if self.NON_REALTIME_MODE:
+            #         elapsedTime = time.time() - startTime
+            #         self.getUserInput()
+            # elif self.isMatlabBreathingDone() and self.isClassifierDone() and radarDataQ.empty():
+            #     # print('Processing finished, waiting for new data... ')
+            #     if not self.resultsDataSaved:
+            #         self.saveResults()
+            #         self.resultsDataSaved = True
+            #         self.safeExit()
+            #         return
+            #     if self.NON_REALTIME_MODE:
+            #         elapsedTime = time.time() - startTime
+            #         self.getUserInput()
+            # if not self.NON_REALTIME_MODE:
+            #     elapsedTime = time.time() - startTime
+            ## end of main while True loop
+        self.safeExit()
+        # except KeyboardInterrupt:
+        #     self.safeExit()
 
     def getUserInput(self):
         self.resumeEvent.clear()
@@ -842,7 +850,7 @@ class MainClass(object):
                 self.breathRateAlgoScores[key] = 0
         # print(self.breathRateAlgoScores)
         algo_list = self.breathRatesAllAlgos.values()
-        print(list(algo_list))
+        # print(list(algo_list))
         histogram = np.histogram(list(algo_list), bins=np.arange(histBinStart,histBinEnd,histBinSize))
         # print(type(histogram[0]))
         maxRangeStart = list(histogram[0]).index(max(histogram[0]))*histBinSize + histBinStart
@@ -977,34 +985,42 @@ class MainClass(object):
         self.procStopEvent.set()
         self.procOutputQ.close()
         self.procInputQ.close()
-        self.processBRProc.join()
+        # self.processBRProc.join()
         print ('Safe exit complete')
 
-    # def saveData(self):
-    #     startTime = time.time()
-    #     print (bcolors.ERROR+'FIX FILE SAVING'+bcolors.ENDC)
-    #     # with open(self.DIRECTORY_PATH + \
-    #     #                   self.FILE_NAME_APPEND + '_'+ \
-    #     #                   time.strftime(u"%Y%m%d-%H%M%S") + '_.csv', 'w') as csvFile:
-    #     #     csvWriter = csv.writer(csvFile)
-    #     #     for rdDataRow in self.radarDataDeck:
-    #     #         csvWriter.writerow(rdDataRow)
-    #     self.radarDataDeck.clear()
-    #     # print 'Data saved...................'
-    #     elapsedTime = time.time() - startTime
-    #     print ('Elapsed %f ms' % (elapsedTime * 1000))
     def saveData(self):
         startTime = time.time()
+        print (bcolors.ERROR+'FIX FILE SAVING'+bcolors.ENDC)
         with open(self.DIRECTORY_PATH + \
-                          self.FILE_NAME_APPEND + '_' + \
+                          self.FILE_NAME_APPEND + '_'+ \
                           time.strftime(u"%Y%m%d-%H%M%S") + '_.csv', 'w') as csvFile:
             csvWriter = csv.writer(csvFile)
             for rdDataRow in self.radarDataDeck:
                 csvWriter.writerow(rdDataRow)
         self.radarDataDeck.clear()
-        print ('Data saved...................{0}'.format(self.radarNumber))
+        # print 'Data saved...................'
         elapsedTime = time.time() - startTime
         print ('Elapsed %f ms' % (elapsedTime * 1000))
+
+    # def saveData(self):
+    #     startTime = time.time()
+    #     with open(self.DIRECTORY_PATH + \
+    #                       self.FILE_NAME_APPEND + '_' + \
+    #                       time.strftime(u"%Y%m%d-%H%M%S") + '_.csv', 'w') as csvFile:
+    #         csvWriter = csv.writer(csvFile)
+    #         for rdDataRow in self.radarDataDeck:
+    #             rdDataRowstr = []
+    #             for i in range(len(rdDataRow)):
+    #                 rdDataRowstr.append(str(rdDataRow[i]).replace('(','').replace(')',''))
+    #             # df = pd.DataFrame(rdDataRow, columns=list('A'))
+    #             # df['A'] = df['A'].apply(str).str.replace('\(|\)','')
+    #             # row_str = str(rdDataRow).replace('(','').replace(')','').replace('[','').replace(']','')
+    #             # csvWriter.writerow(df['A'])
+    #             csvWriter.writerow(rdDataRowstr)
+    #     self.radarDataDeck.clear()
+    #     print ('Data saved...................{0}'.format(self.radarNumber))
+    #     elapsedTime = time.time() - startTime
+    #     print ('Elapsed %f ms' % (elapsedTime * 1000))
 
 class RadarThread(threading.Thread):
     def __init__(self, threadID, name, object = None):
@@ -1022,26 +1038,28 @@ class RadarThread(threading.Thread):
 
 
 if __name__ == '__main__':
-    os.system('roscore &')
-    time.sleep(5)
-    os.system('python dataCollection1.py &')
-    os.system('python dataCollection2.py &')
+    # multiprocessing.freeze_support()  # has to be called in windows to make the executable creation done, if not some thread won't start
+    # os.system('roscore &')
+    # time.sleep(5)
+    # os.system('python dataCollection1.py &')
+    # os.system('python dataCollection2.py &')
+    os.system('python3 main2.py &')
     # Create required folders
     if ROS_AVAILABLE:
-        rospy.init_node('realtimeBreathing')
+        rospy.init_node('realtimeBreathing_1')
 
     if not os.path.exists('results'):  # Save as JPEG in folder
         os.makedirs('results')
     if not os.path.exists('logs'):
         os.makedirs('logs')
     rd1 = MainClass(radarNumber = 1, port='/dev/ttyS3')
-    rd2 = MainClass(radarNumber = 2, port='/dev/ttyS5')
+    # rd2 = MainClass(radarNumber = 2, port='/dev/ttyS5')
     rd_thread_1 = RadarThread(11,'sensorRadarThread1',object=rd1)
-    rd_thread_2 = RadarThread(22,'sensorRadarThread2',object=rd2)
+    # rd_thread_2 = RadarThread(22,'sensorRadarThread2',object=rd2)
     # rd_thread_1.pauseEvent.set()
     # rd_thread_2.pauseEvent.set()
     rd_thread_1.start()
-    rd_thread_2.start()
+    # rd_thread_2.start()
     # time.sleep(16)
     # rd_thread_1.pauseEvent.clear()
     # rd_thread_2.pauseEvent.clear()
@@ -1057,4 +1075,4 @@ if __name__ == '__main__':
 
 
     rd_thread_1.join()
-    rd_thread_2.join()
+    # rd_thread_2.join()
