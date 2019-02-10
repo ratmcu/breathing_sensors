@@ -35,8 +35,8 @@ import logging
 import datetime
 
 import multiprocessing
-from processBR import processBR
-import HttpThread
+#from processBR import processBR
+#import HttpThread
 import threading
 import queue
 from globalVars import *
@@ -109,7 +109,7 @@ class MainClass(object):
         if self.USE_X4:
             os.chdir(os.getcwd())
             print('radar_{0}_Data/rawDataX4/'.format(radarNumber) + time.strftime(u"%Y%m%d"))
-            self.DIRECTORY_PATH = '/mnt/c/workspace/data/radar/rawData_radar_{0}/'.format(radarNumber)+ time.strftime(u"%Y%m%d")
+            self.DIRECTORY_PATH = 'C:/workspace/data/radar/rawData_radar_{0}/'.format(radarNumber)+ time.strftime(u"%Y%m%d")
         else:
             self.DIRECTORY_PATH = os.path.expanduser('~/')+'radarData/rawDataV2/' + time.strftime(u"%Y%m%d")
 
@@ -176,9 +176,9 @@ class MainClass(object):
         # CLOUD START
         # Init HTTP Thread
         self.QDataDict = queue.Queue()
-        self.stopHttpThread = threading.Event()
-        self.httpThread = HttpThread.HttpThread(self.QDataDict, self.stopHttpThread)
-        self.httpThread.start()
+        #self.stopHttpThread = threading.Event()
+        #self.httpThread = HttpThread.HttpThread(self.QDataDict, self.stopHttpThread)
+        #self.httpThread.start()
         # CLOUD END
 
 
@@ -457,8 +457,8 @@ class MainClass(object):
         self.engProcRadar.workspace['fs'] = self.dspVars['fs']
         self.engProcRadar.workspace['pythonRangeBin'] = int(self.dspVars['pythonRangeBin'] + 1)
         # self.futureOut = self.engProcRadar.processbr_engine(nargout=0, async=True)
-        if self.USE_CLASSIFIER:
-            self.classOut = self.engClassification.ClassifyPosture(dataList,nargout=2, async=True)
+        #if self.USE_CLASSIFIER:
+        #    self.classOut = self.engClassification.ClassifyPosture(dataList,nargout=2, async = True)
         self.radarDataWindow = []
 
     def startMatlabProcessingSingleBin(self):
@@ -513,10 +513,10 @@ class MainClass(object):
     def main(self):
 #        global radarDataQ
 
-        if MATLAB_AVAILABLE:
-            self.futureOut = self.engProcRadar.sqrt(4.0, async=True)  # create dummy matlab process
-        if self.USE_CLASSIFIER and MATLAB_AVAILABLE:
-            self.classOut = self.engClassification.sqrt(4.0, async=True)
+       # if MATLAB_AVAILABLE:
+       #     self.futureOut = self.engProcRadar.sqrt(4.0, async=True)  # create dummy matlab process
+       # if self.USE_CLASSIFIER and MATLAB_AVAILABLE:
+       #     self.classOut = self.engClassification.sqrt(4.0, async=True)
         # self.radarResumeEvent.set()
         # self.radarPauseEvent.clear()
         self.radarThread.start() # start data collection thread
@@ -1038,12 +1038,7 @@ class RadarThread(threading.Thread):
 
 
 if __name__ == '__main__':
-    # multiprocessing.freeze_support()  # has to be called in windows to make the executable creation done, if not some thread won't start
-    # os.system('roscore &')
-    # time.sleep(5)
-    # os.system('python dataCollection1.py &')
-    # os.system('python dataCollection2.py &')
-    os.system('python3 main2.py &')
+    #os.system('python main2.py &')
     # Create required folders
     if ROS_AVAILABLE:
         rospy.init_node('realtimeBreathing_1')
@@ -1052,27 +1047,11 @@ if __name__ == '__main__':
         os.makedirs('results')
     if not os.path.exists('logs'):
         os.makedirs('logs')
-    rd1 = MainClass(radarNumber = 1, port='/dev/ttyS3')
-    # rd2 = MainClass(radarNumber = 2, port='/dev/ttyS5')
+    rd1 = MainClass(radarNumber = 1, port='COM3')
     rd_thread_1 = RadarThread(11,'sensorRadarThread1',object=rd1)
-    # rd_thread_2 = RadarThread(22,'sensorRadarThread2',object=rd2)
-    # rd_thread_1.pauseEvent.set()
-    # rd_thread_2.pauseEvent.set()
     rd_thread_1.start()
-    # rd_thread_2.start()
-    # time.sleep(16)
-    # rd_thread_1.pauseEvent.clear()
-    # rd_thread_2.pauseEvent.clear()
-    # rd_thread_1.resumeEvent.set()
-    # rd_thread_2.resumeEvent.set()
-    # while True:
-    #     rd_thread_1.pauseEvent.wait()
-    #     rd_thread_1.pauseEvent.clear()
-    #     rd_thread_1.resumeEvent.set()
-    #     rd_thread_2.pauseEvent.wait()
-    #     rd_thread_2.pauseEvent.clear()
-    #     rd_thread_2.resumeEvent.set()
-
-
+    #rd2 = MainClass(radarNumber = 2, port='COM5')
+    #rd_thread_2 = RadarThread(22,'sensorRadarThread1',object=rd2)
+    #rd_thread_2.start()
     rd_thread_1.join()
-    # rd_thread_2.join()
+    #rd_thread_2.join()

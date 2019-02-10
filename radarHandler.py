@@ -19,7 +19,7 @@ import sys
 import threading
 import queue
 
-from globalVars import *
+#from globalVars import *
 from io import open
 
 
@@ -131,7 +131,7 @@ class CollectionThread(threading.Thread):
         return RADAR_OBJECT
 
 class CollectionThreadX4(threading.Thread):
-    def __init__(self, threadID, name, stopEvent,radarSettings, baseband = False, fs = 17, radarPort='/dev/ttyS5', simulate = False, filePaths = None,
+    def __init__(self, threadID, name, stopEvent,radarSettings, baseband = False, fs = 17, radarPort='COM11', simulate = False, filePaths = None,
                  nonRealTimeMode = False,resumeEvent = None, pauseEvent=None, dataQueue=None, dataLock=None):
         threading.Thread.__init__(self)
         self.name = name

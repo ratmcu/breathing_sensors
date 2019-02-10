@@ -1,2 +1,4 @@
-call "cmd /c start python.exe bb2main.py"
-python.exe camera.py
+call "cmd /c start breathing.bat" 
+call "cmd /c start radar1.bat" 
+call "cmd /c start radar2.bat"
+call "cmd /c camera.bat"

@@ -28,10 +28,11 @@ DIRECTORY_PATH = 'C:/workspace/data/RawBreathingBeltData/' + time.strftime(u"%Y%
 def main():
     if not os.path.exists(DIRECTORY_PATH):
         os.makedirs(DIRECTORY_PATH)
+    name = 'GDX-RB 0K1002U5'
     bbeltDataLock = threading.Lock()
     stopEvent = threading.Event()
     bbeltDataQ = queue.Queue()
-    bbeltThread = CollectionThreadGDXRB(threadID = 2, name = 'GDX-RB 0K1002U5', dataQueue=bbeltDataQ, dataLock=bbeltDataLock, stopEvent = stopEvent)
+    bbeltThread = CollectionThreadGDXRB(threadID = 2, name = name, dataQueue=bbeltDataQ, dataLock=bbeltDataLock, stopEvent = stopEvent)
     bbeltThread.start()
     bbeltDataDeck = collections.deque(maxlen=60*10)
     dataList = []
@@ -47,7 +48,7 @@ def main():
             dataList = []
             if len(bbeltDataDeck) == 600:
                 startTime = time.time()
-                with open(DIRECTORY_PATH + time.strftime(u"%Y%m%d-%H%M%S") +'.csv', 'w') as csvFile:
+                with open(DIRECTORY_PATH + 'BREATHING_BELT_' + name +'_'+ time.strftime(u"%Y%m%d-%H%M%S") +'.csv', 'w') as csvFile:
                     csvWriter = csv.writer(csvFile)
                     for bbDataRow in bbeltDataDeck:
                         csvWriter.writerow(bbDataRow)

@@ -3,6 +3,7 @@ Created on Dec 25, 2018
 
 @author: rajitha
 '''
+# !pip install vernierpygatt
 from godirect import GoDirect
 import time
 godirect = GoDirect(use_ble=False, use_usb=True)
@@ -23,14 +24,14 @@ class GoDirectDivices():
         self.device_list = []
         for device in self.devices:
             self.device_list.append(device)
-            device.open(auto_start=True)
+            device.open(auto_start=False)
             print('found device: {0}'.format(device.name))
         # print('found devices: {0}'.format(godirect.list_devices()))
 
     def __del__(self):
-        # for device in self.devices:
-        # 	device.stop()
-        # 	device.close()
+        for device in self.devices:
+        	device.stop()
+        	device.close()
         godirect.quit()
 
 
@@ -108,7 +109,8 @@ class CollectionThreadGDXRBDummy(threading.Thread):
                     for sensor in self.sensors:
                         value = sensor.value
                 self.dataLock.acquire()
-                self.dataQueue.put([int((currentTime - startTime) * 1000)] + [value])
+                # self.dataQueue.put([int((currentTime - startTime) * 1000)] + [value])
+                self.dataQueue.put([currentTime] + [value])
                 self.dataLock.release()
             self.device.stop()
             self.device.close()
