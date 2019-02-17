@@ -40,7 +40,7 @@ import multiprocessing
 import threading
 import queue
 from globalVars import *
-from radarHandler import CollectionThread,CollectionThreadX4
+from radarHandler import CollectionThread,CollectionThreadX4,CollectionThreadX4MP
 
 import pandas as pd
 
@@ -217,20 +217,24 @@ class MainClass(object):
         # radar sensor thread semaphors
         self.radarDataLock = threading.Lock()
         self.radarDataQ = queue.Queue()
+        self.radarDataQMP = multiprocessing.Queue()
+        self.radarStopEventMP = multiprocessing.Event()
         #
 
         if self.SIMULATE:
             if self.USE_X4:
                 self.radarThread = CollectionThreadX4(1,'radarThreadX4',self.stopEvent,self.radarSettings,baseband=True,simulate=True,
                                                       filePaths=self.SIMFILEPATHS,nonRealTimeMode=self.NON_REALTIME_MODE,resumeEvent=self.resumeEvent)
+
             else:
                 self.radarThread = CollectionThread(1, 'radarThread', self.stopEvent, self.radarSettings, radarIP='192.168.7.2', simulate=True,
                                             filePaths=self.SIMFILEPATHS,nonRealTimeMode=self.NON_REALTIME_MODE,resumeEvent=self.resumeEvent)
         else:
             if self.USE_X4:
-                self.radarThread = CollectionThreadX4(radarNumber,'radarThreadX4_{0}'.format(radarNumber),self.stopEvent,self.radarSettings,baseband=True,
-                                                      nonRealTimeMode=self.NON_REALTIME_MODE,resumeEvent=self.radarResumeEvent,
-                                                      dataQueue=self.radarDataQ, dataLock=self.radarDataLock, pauseEvent=self.radarPauseEvent, radarPort=port)
+                # self.radarThread = CollectionThreadX4(radarNumber,'radarThreadX4_{0}'.format(radarNumber),self.stopEvent,self.radarSettings,baseband=True,
+                #                                       nonRealTimeMode=self.NON_REALTIME_MODE,resumeEvent=self.radarResumeEvent,
+                #                                       dataQueue=self.radarDataQ, dataLock=self.radarDataLock, pauseEvent=self.radarPauseEvent, radarPort=port)
+                self.radarThread = CollectionThreadX4MP('radarThreadX4_{0}'.format(radarNumber), self.radarStopEventMP, self.radarSettings, baseband=True, dataQueue=self.radarDataQMP, radarPort=port)
             else:
                 self.radarThread = CollectionThread(1, 'radarThread', self.stopEvent, self.radarSettings, radarIP='192.168.7.2',
                                                     nonRealTimeMode=self.NON_REALTIME_MODE,resumeEvent=self.resumeEvent)
@@ -520,7 +524,7 @@ class MainClass(object):
         # self.radarResumeEvent.set()
         # self.radarPauseEvent.clear()
         self.radarThread.start() # start data collection thread
-        self.procStopEvent.clear()
+        # self.procStopEvent.clear()
         # self.processBRProc.start() # start breath rate processing process
         # if self.SIMULATE == False:
         #This sleep is needed for the non real time mode as well
@@ -532,6 +536,12 @@ class MainClass(object):
         #     rospy.init_node('realtimeBreathing_{0}'.format(self.radarNumber))
         #rospy.sleep(WINDOW_LENGTH) # sleep till first set of useful data is collected
         elapsedTime = 0
+        # self.radarDataLock.acquire()
+        while not self.radarDataQMP.empty():
+            # radarDataTemp.append(radarDataQ.get())
+            self.radarDataQMP.get()
+            #self.radarDataDeck.append(self.radarDataQ.get())
+        # self.radarDataLock.release()
         while True:
             # if self.mainPauseEvent.is_set():
             #     print('radar thread {0} is paused'.format(self.radarNumber))
@@ -546,16 +556,17 @@ class MainClass(object):
             # if sleepTime>0:
             #     time.sleep(sleepTime)
             # startTime = time.time()
-
+            # time.sleep(0.5)
             #''' acquire required data from the sensor thread'''
-            if not self.radarDataQ.empty():
+            if not self.radarDataQMP.empty():
                 # print('Getting radar data...')
                 # radarDataTemp = []
-                self.radarDataLock.acquire()
-                while not self.radarDataQ.empty():
+                # self.radarDataLock.acquire()
+                while not self.radarDataQMP.empty():
                     # radarDataTemp.append(radarDataQ.get())
-                    self.procInputDict['radarData'].append(self.radarDataQ.get())
-                self.radarDataLock.release()
+                    self.procInputDict['radarData'].append(self.radarDataQMP.get())
+                    # self.radarDataDeck.append(self.radarDataQ.get())
+                # self.radarDataLock.release()
                 self.radarDataDeck.extend(self.procInputDict['radarData']) #Needed for Matlab and saving the data
             #'''end of the data acquisition'''
                 # self.previousEndTime = self.endTime
@@ -615,16 +626,20 @@ class MainClass(object):
                 dataSaved = False
                 if self.SAVE_DATA:
                     if isinstance(self.radarDataDeck[-1][0],complex):
+                    # if isinstance(self.procInputDict['radarData'][-1][0],complex):
                         # if self.radarDataDeck[-1][0].real - self.radarDataDeck[0][0].real > self.FILE_LENGTH * 1000:
                         if self.radarDataDeck[-1][0].real - self.radarDataDeck[0][0].real > self.FILE_LENGTH:
                             self.saveData()
-                            self.procInputDict['radarData'] = []
+                            #self.procInputDict['radarData'] = []
+                            #print(type(self.procInputDict['radarData']))
                             dataSaved = True
                     else:
                         # if self.radarDataDeck[-1][0] - self.radarDataDeck[0][0] > self.FILE_LENGTH * 1000:
-                        if self.radarDataDeck[-1][0] - self.radarDataDeck[0][0] > self.FILE_LENGTH:
+                        # if self.procInputDict['radarData'][-1][0] - self.procInputDict['radarData'][0][0] > self.FILE_LENGTH:
+                        if self.radarDataDeck[-1][0] - self.radarDataDeck[0][0] > self.FILE_LENGTH*2.0:
                             self.saveData()
-                            self.procInputDict['radarData'] = []
+                            self.procInputDict['radarData'].clear()
+                            #print(type(self.procInputDict['radarData']))
                             dataSaved = True
                 if dataSaved :
                     # self.radarPauseEvent.set()
@@ -975,30 +990,33 @@ class MainClass(object):
 
     def safeExit(self):
         print ('Stopping radarThread')
-        self.stopEvent.set()
+        self.radarStopEventMP.set()
         self.radarThread.join()
         if MATLAB_AVAILABLE:
             print ('Stopping Matlab')
             self.futureOut.cancel()
             self.engProcRadar.quit()
-        print ('Stopping breath rate processing')
-        self.procStopEvent.set()
-        self.procOutputQ.close()
-        self.procInputQ.close()
+        # print ('Stopping breath rate processing')
+        # self.procStopEvent.set()
+        # self.procOutputQ.close()
+        # self.procInputQ.close()
         # self.processBRProc.join()
         print ('Safe exit complete')
 
     def saveData(self):
         startTime = time.time()
-        print (bcolors.ERROR+'FIX FILE SAVING'+bcolors.ENDC)
+        print ('starting saving csv...')
         with open(self.DIRECTORY_PATH + \
                           self.FILE_NAME_APPEND + '_'+ \
-                          time.strftime(u"%Y%m%d-%H%M%S") + '_.csv', 'w') as csvFile:
+                          time.strftime(u"%Y%m%d-%H%M%S") + '_.csv', 'w', newline='') as csvFile:
             csvWriter = csv.writer(csvFile)
+            print('writing csv..')
             for rdDataRow in self.radarDataDeck:
+            # for rdDataRow in self.procInputDict['radarData']:
                 csvWriter.writerow(rdDataRow)
+        print('clearing the data deck..')
         self.radarDataDeck.clear()
-        # print 'Data saved...................'
+        # self.procInputDict['radarData'].clear()
         elapsedTime = time.time() - startTime
         print ('Elapsed %f ms' % (elapsedTime * 1000))
 

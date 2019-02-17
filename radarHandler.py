@@ -21,7 +21,7 @@ import queue
 
 #from globalVars import *
 from io import open
-
+import multiprocessing
 
 class CollectionThread(threading.Thread):
     def __init__(self, threadID, name, stopEvent,radarSettings, radarIP='192.168.7.2', simulate = False, filePaths = None,
@@ -242,17 +242,94 @@ class CollectionThreadX4(threading.Thread):
                 currentTime = time.time()
                 radarFrame = self.read_frame()
                 # print len(radarFrame)
-                self.radarDataLock.acquire()
+
                 # self.radarDataQ.put([int((currentTime - startTime) * 1000)] + list(radarFrame))
                 # radarFrame = str(radarFrame).replace('(','').replace(')','')
                 # rdDataRow = [currentTime] + list(radarFrame)
                 rdDataRowstr = []
                 for i in range(len(radarFrame)):
                     rdDataRowstr.append(str(radarFrame[i]).replace('(','').replace(')',''))
+                self.radarDataLock.acquire()
                 self.radarDataQ.put([currentTime] + list(rdDataRowstr))
                 self.radarDataLock.release()
 
             self.radarObject.x4driver_set_fps(0) # stop the radar
+
+    def reset(self,device_name):
+        mc = ModuleConnector(device_name)
+        r = mc.get_xep()
+        r.module_reset()
+        mc.close()
+        time.sleep(3)
+
+    def read_frame(self):
+        """Gets frame data from module"""
+        d = self.radarObject.read_message_data_float()
+        frame = np.array(d.data)
+        # print len(frame)
+        # print frame
+
+        # Convert the resulting frame to a complex array if downconversion is enabled
+        if self.baseband:
+            n = len(frame)
+            # print type(n // 2)
+            frame = frame[:n // 2] + 1j * frame[n // 2:]
+
+        return frame
+
+    def clear_buffer(self):
+        """Clears the frame buffer"""
+        while self.radarObject.peek_message_data_float():
+            _ = self.radarObject.read_message_data_float()
+# end of the threading based radar thread class
+
+class CollectionThreadX4MP(multiprocessing.Process):
+    def __init__(self, name, stopEvent, radarSettings, baseband = False, fs = 17, radarPort='COM11', dataQueue=None):
+        multiprocessing.Process.__init__(self)
+        self.name = name
+        self.stopEvent = stopEvent
+        self.radarDataQ = dataQueue
+        self.radarPort = radarPort
+        self.radarSettings = radarSettings
+        self.fs = fs
+        self.baseband = baseband
+        print ('Collection thread initialized')
+
+    def run(self):
+        print ('Initializing radar')
+        self.reset(self.radarPort)
+        self.mc = ModuleConnector(self.radarPort)
+        self.radarObject = self.mc.get_xep()
+        # Set DAC range
+        self.radarObject.x4driver_set_dac_min(self.radarSettings['DACMin'])
+        self.radarObject.x4driver_set_dac_max(self.radarSettings['DACMax'])
+
+        # Set integration
+        self.radarObject.x4driver_set_iterations(self.radarSettings['Iterations'])
+        self.radarObject.x4driver_set_pulses_per_step(self.radarSettings['PulsesPerStep'])
+        self.radarObject.x4driver_set_frame_area(self.radarSettings['FrameStart'],self.radarSettings['FrameStop'])
+        if self.baseband:
+            self.radarObject.x4driver_set_downconversion(1)
+        self.radarObject.x4driver_set_fps(self.fs)
+
+        frame = self.read_frame()
+        if self.baseband:
+            frame = abs(frame)
+        self.clear_buffer()
+        startTime = time.time()
+        print((self.radarObject.get_system_info(0x07)))
+
+        print ('Starting radar data collection')
+        while True:
+            # print ('----------------')
+            currentTime = time.time()
+            radarFrame = self.read_frame()
+            rdDataRowstr = []
+            for i in range(len(radarFrame)):
+                rdDataRowstr.append(str(radarFrame[i]).replace('(','').replace(')',''))
+            self.radarDataQ.put([currentTime] + list(rdDataRowstr))
+
+        self.radarObject.x4driver_set_fps(0) # stop the radar
 
     def reset(self,device_name):
         mc = ModuleConnector(device_name)
