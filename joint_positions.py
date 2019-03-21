@@ -4,7 +4,7 @@ from pykinect2 import PyKinectRuntime
 
 import ctypes
 import _ctypes
-import pygame
+# import pygame
 import sys
 import time
 import csv
@@ -15,49 +15,55 @@ if sys.hexversion >= 0x03000000:
 else:
     import thread
 
-_kinect = PyKinectRuntime.PyKinectRuntime(PyKinectV2.FrameSourceTypes_Color | PyKinectV2.FrameSourceTypes_Body)
+_kinect = PyKinectRuntime.PyKinectRuntime(PyKinectV2.FrameSourceTypes_Color | PyKinectV2.FrameSourceTypes_Body| PyKinectV2.FrameSourceTypes_Depth)
 
 
-def get_joint(joints, jointPoints, joint0):
+def get_joint(joints, jointPoints, joint0, depth):
         joint0State = joints[joint0].TrackingState;
         # both joints are not tracked
         if (joint0State == PyKinectV2.TrackingState_NotTracked) or (joint0State == PyKinectV2.TrackingState_Inferred):
-            return [0.0, 0.0]
+            return [0,0,0]
         # ok, at least one is good
-        return [jointPoints[joint0].x, jointPoints[joint0].y]
+        joint_points_depth = _kinect.body_joints_to_depth_space(joints)
+        x = int(joint_points_depth[joint0].x)
+        y = int(joint_points_depth[joint0].y)
+        # z = int(self._depth[ y * 512 + x ] ) ## Its in Millimeters
+        z = depth[ y * 512 + x ]
+        # print([x,y,z])
+        return [x,y,z]
 
-def list_joints(person, joints, jointPoints):
+def list_joints(person, joints, jointPoints, depth):
     # Torso
     joint_list = ['person_'+str(person)]
-    joint_list = joint_list + get_joint(joints, jointPoints, PyKinectV2.JointType_Head);
-    joint_list = joint_list + get_joint(joints, jointPoints, PyKinectV2.JointType_Neck);
-    joint_list = joint_list + get_joint(joints, jointPoints, PyKinectV2.JointType_SpineShoulder);
-    joint_list = joint_list + get_joint(joints, jointPoints, PyKinectV2.JointType_SpineMid);
-    joint_list = joint_list + get_joint(joints, jointPoints, PyKinectV2.JointType_SpineShoulder);
-    joint_list = joint_list + get_joint(joints, jointPoints, PyKinectV2.JointType_SpineBase);
+    joint_list = joint_list + get_joint(joints, jointPoints, PyKinectV2.JointType_Head, depth);
+    joint_list = joint_list + get_joint(joints, jointPoints, PyKinectV2.JointType_Neck, depth);
+    joint_list = joint_list + get_joint(joints, jointPoints, PyKinectV2.JointType_SpineShoulder, depth);
+    joint_list = joint_list + get_joint(joints, jointPoints, PyKinectV2.JointType_SpineMid, depth);
+    joint_list = joint_list + get_joint(joints, jointPoints, PyKinectV2.JointType_SpineShoulder, depth);
+    joint_list = joint_list + get_joint(joints, jointPoints, PyKinectV2.JointType_SpineBase, depth);
 
     # Right Arm
-    joint_list = joint_list + get_joint(joints, jointPoints, PyKinectV2.JointType_ShoulderRight);
-    joint_list = joint_list + get_joint(joints, jointPoints, PyKinectV2.JointType_ElbowRight);
-    joint_list = joint_list + get_joint(joints, jointPoints, PyKinectV2.JointType_WristRight);
-    joint_list = joint_list + get_joint(joints, jointPoints, PyKinectV2.JointType_HandRight);
-    joint_list = joint_list + get_joint(joints, jointPoints, PyKinectV2.JointType_WristRight);
+    joint_list = joint_list + get_joint(joints, jointPoints, PyKinectV2.JointType_ShoulderRight, depth);
+    joint_list = joint_list + get_joint(joints, jointPoints, PyKinectV2.JointType_ElbowRight, depth);
+    joint_list = joint_list + get_joint(joints, jointPoints, PyKinectV2.JointType_WristRight, depth);
+    joint_list = joint_list + get_joint(joints, jointPoints, PyKinectV2.JointType_HandRight, depth);
+    joint_list = joint_list + get_joint(joints, jointPoints, PyKinectV2.JointType_WristRight, depth);
 
     # Left Arm
-    joint_list = joint_list + get_joint(joints, jointPoints, PyKinectV2.JointType_ShoulderLeft);
-    joint_list = joint_list + get_joint(joints, jointPoints, PyKinectV2.JointType_ElbowLeft);
-    joint_list = joint_list + get_joint(joints, jointPoints, PyKinectV2.JointType_WristLeft);
-    joint_list = joint_list + get_joint(joints, jointPoints, PyKinectV2.JointType_HandLeft);
+    joint_list = joint_list + get_joint(joints, jointPoints, PyKinectV2.JointType_ShoulderLeft, depth);
+    joint_list = joint_list + get_joint(joints, jointPoints, PyKinectV2.JointType_ElbowLeft, depth);
+    joint_list = joint_list + get_joint(joints, jointPoints, PyKinectV2.JointType_WristLeft, depth);
+    joint_list = joint_list + get_joint(joints, jointPoints, PyKinectV2.JointType_HandLeft, depth);
 
     # Right Leg
-    joint_list = joint_list + get_joint(joints, jointPoints, PyKinectV2.JointType_HipRight);
-    joint_list = joint_list + get_joint(joints, jointPoints, PyKinectV2.JointType_KneeRight);
-    joint_list = joint_list + get_joint(joints, jointPoints, PyKinectV2.JointType_AnkleRight);
+    joint_list = joint_list + get_joint(joints, jointPoints, PyKinectV2.JointType_HipRight, depth);
+    joint_list = joint_list + get_joint(joints, jointPoints, PyKinectV2.JointType_KneeRight, depth);
+    joint_list = joint_list + get_joint(joints, jointPoints, PyKinectV2.JointType_AnkleRight, depth);
 
     # Left Leg
-    joint_list = joint_list + get_joint(joints, jointPoints, PyKinectV2.JointType_HipLeft);
-    joint_list = joint_list + get_joint(joints, jointPoints, PyKinectV2.JointType_KneeLeft);
-    joint_list = joint_list + get_joint(joints, jointPoints, PyKinectV2.JointType_AnkleLeft);
+    joint_list = joint_list + get_joint(joints, jointPoints, PyKinectV2.JointType_HipLeft, depth);
+    joint_list = joint_list + get_joint(joints, jointPoints, PyKinectV2.JointType_KneeLeft, depth);
+    joint_list = joint_list + get_joint(joints, jointPoints, PyKinectV2.JointType_AnkleLeft, depth);
     return joint_list
 # here we will store skeleton data
 _bodies = None
@@ -68,8 +74,9 @@ if not os.path.exists(PATH):
     os.makedirs(PATH)
 PATH = PATH + '/'
 while True:
-    if _kinect.has_new_body_frame():
+    if _kinect.has_new_body_frame() and _kinect.has_new_depth_frame():
         _bodies = _kinect.get_last_body_frame()
+        _depth = _kinect.get_last_depth_frame()
     # --- draw skeletons to _frame_surface
     if time.time() - start_time > 60 and len(frames)!=0:
         with open( PATH+'kinect_frames'+time.strftime(u"%Y%m%d-%H%M%S")+'.csv', 'w') as csvFile:
@@ -87,9 +94,10 @@ while True:
                 continue
 
             joints = body.joints
+            currentTime = time.time()
             # convert joint coordinates to color space
             joint_points = _kinect.body_joints_to_color_space(joints)
-            frame.append(list_joints(i,joints, joint_points))
+            frame.append([currentTime]+list_joints(i,joints, joint_points, _depth))
             # print(list_joints(i,joints, joint_points))
         frames.append(frame)
         # with open( 'frames'+time.strftime(u"%Y%m%d-%H%M%S")+'_kinect.csv', 'w') as csvFile:
