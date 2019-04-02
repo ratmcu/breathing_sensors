@@ -1,0 +1,1 @@
+activate py3k & python camera.py
