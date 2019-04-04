@@ -17,7 +17,7 @@ import multiprocessing
 # from processBR import processBR
 import threading
 import queue
-from breathingBeltHandlerHacked import CollectionThreadGDXRBDummy, GoDirectDivices
+from breathingBeltHandlerHacked import CollectionThreadGDXRBDummy, GoDirectDevices
 
 DIRECTORY_PATH = 'C:/workspace/data/RawBreathingBeltData/' + time.strftime(u"%Y%m%d") + '/'
 def sensor_thread(device):
@@ -57,7 +57,7 @@ def sensor_thread(device):
     bbeltThread.join()
 
 if __name__ == '__main__':
-    godirect_devs = GoDirectDivices()
+    godirect_devs = GoDirectDevices()
     sensor_threads = []
     for device in godirect_devs.device_list:
         sensor_threads.append(threading.Thread(target=sensor_thread, args = (device,)))

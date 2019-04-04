@@ -18,7 +18,7 @@ import queue
 
 from io import open
 
-class GoDirectDivices():
+class GoDirectDevices():
     def __init__(self):
         self.devices = godirect.list_devices()
         self.device_list = []
