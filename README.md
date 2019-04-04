@@ -1,4 +1,7 @@
 ## breathing_sensors
+
+Install miniconda for windows and create a python 3.6 environment  
+
 ```
 pip install godirect
 ```
@@ -16,3 +19,6 @@ and the do the following to fix the issue after installing pykinect2
 
 [https://github.com/Kinect/PyKinect2/issues/37#issuecomment-290158054]
 
+### running the system
+
+TBD
